@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Groww NSE P&L & Tax Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen py-10 px-4 sm:px-6 lg:px-8 text-gray-800">
+
+    <div class="max-w-6xl mx-auto space-y-8">
+        <!-- Header -->
+        <div class="text-center space-y-2">
+            <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Groww Trade & Tax Calculator</h1>
+            <p class="text-gray-500">Calculate Gross P&L, Brokerage, and Post-Tax Net Profit on NSE</p>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Left Column: Input Form (Spans 4 columns) -->
+            <div class="lg:col-span-4 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-6 h-fit sticky top-6">
+                <h2 class="text-lg font-semibold border-b pb-2 text-gray-800">Trade Details</h2>
+                
+                <div class="space-y-5">
+                    <!-- Trade Type -->
+                    <div>
+                        <label for="tradeType" class="block text-sm font-medium text-gray-700 mb-1">Trade Type</label>
+                        <select id="tradeType" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900 bg-white">
+                            <option value="intraday">Intraday (Same Day)</option>
+                            <option value="delivery-st">Delivery - Short Term (≤ 12 months)</option>
+                            <option value="delivery-lt">Delivery - Long Term (> 12 months)</option>
+                        </select>
+                    </div>
+
+                    <!-- Quantity -->
+                    <div>
+                        <label for="qty" class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                        <input type="number" id="qty" placeholder="e.g. 100" min="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Buy Price -->
+                        <div>
+                            <label for="buy" class="block text-sm font-medium text-gray-700 mb-1">Buy Price (₹)</label>
+                            <input type="number" id="buy" placeholder="0.00" min="0" step="0.05" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900">
+                        </div>
+
+                        <!-- Sell Price -->
+                        <div>
+                            <label for="sell" class="block text-sm font-medium text-gray-700 mb-1">Sell Price (₹)</label>
+                            <input type="number" id="sell" placeholder="0.00" min="0" step="0.05" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900">
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Tax Inputs -->
+                    <div id="tax-inputs-section" class="pt-4 border-t border-gray-100 space-y-4 bg-gray-50 p-4 rounded-xl">
+                        
+                        <!-- Income Tax Slab (Intraday Only) -->
+                        <div id="slab-container">
+                            <label for="slab" class="block text-sm font-medium text-gray-700 mb-1">Income Tax Slab</label>
+                            <select id="slab" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900 bg-white">
+                                <option value="5">5%</option>
+                                <option value="10">10%</option>
+                                <option value="15">15%</option>
+                                <option value="20">20%</option>
+                                <option value="30" selected>30%</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Speculative income is taxed at your slab rate.</p>
+                        </div>
+
+                        <!-- Exemption (Long Term Only) -->
+                        <div id="exemption-container" class="hidden">
+                            <label class="flex items-start space-x-3 cursor-pointer">
+                                <input type="checkbox" id="exemption" class="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" checked>
+                                <div>
+                                    <span class="block text-sm font-medium text-gray-700">Apply ₹1.25L Exemption?</span>
+                                    <span class="block text-xs text-gray-500">First ₹1.25 Lakhs of LTCG per year is tax-free.</span>
+                                </div>
+                            </label>
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Results (Spans 8 columns) -->
+            <div class="lg:col-span-8 space-y-6">
+                
+                <!-- 5 Summary Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Gross P&L</p>
+                        <p id="resGross" class="text-xl font-bold text-gray-900">₹0.00</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Charges</p>
+                        <p id="resCharges" class="text-xl font-bold text-red-500">₹0.00</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Net (Pre-Tax)</p>
+                        <p id="resNetPreTax" class="text-xl font-bold text-gray-900">₹0.00</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Tax Payable</p>
+                        <p id="resTax" class="text-xl font-bold text-red-500">₹0.00</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 border-b-4 border-b-blue-500">
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Final Net P&L</p>
+                        <p id="resFinal" class="text-xl font-bold text-gray-900">₹0.00</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Breakdown of Charges -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="px-5 py-3 border-b border-gray-100 bg-gray-50">
+                            <h3 class="font-semibold text-gray-800">Charges Breakdown</h3>
+                        </div>
+                        <div class="p-5">
+                            <ul class="space-y-3 text-sm text-gray-600">
+                                <li class="flex justify-between border-b border-dashed border-gray-200 pb-2">
+                                    <span>Brokerage</span>
+                                    <span id="bBrokerage" class="font-medium text-gray-900">₹0.00</span>
+                                </li>
+                                <li class="flex justify-between border-b border-dashed border-gray-200 pb-2">
+                                    <span>STT</span>
+                                    <span id="bSTT" class="font-medium text-gray-900">₹0.00</span>
+                                </li>
+                                <li class="flex justify-between border-b border-dashed border-gray-200 pb-2">
+                                    <span>Exchange Charge (NSE)</span>
+                                    <span id="bExchange" class="font-medium text-gray-900">₹0.00</span>
+                                </li>
+                                <li class="flex justify-between border-b border-dashed border-gray-200 pb-2">
+                                    <span>Stamp Duty</span>
+                                    <span id="bStamp" class="font-medium text-gray-900">₹0.00</span>
+                                </li>
+                                <li class="flex justify-between border-b border-dashed border-gray-200 pb-2">
+                                    <span>SEBI Charge</span>
+                                    <span id="bSEBI" class="font-medium text-gray-900">₹0.00</span>
+                                </li>
+                                <li class="flex justify-between border-b border-dashed border-gray-200 pb-2">
+                                    <span>DP Charge</span>
+                                    <span id="bDP" class="font-medium text-gray-900">₹0.00</span>
+                                </li>
+                                <li class="flex justify-between border-b border-dashed border-gray-200 pb-2">
+                                    <span>GST (18%)</span>
+                                    <span id="bGST" class="font-medium text-gray-900">₹0.00</span>
+                                </li>
+                                <li class="flex justify-between pt-2">
+                                    <span class="font-semibold text-gray-800">Total Charges</span>
+                                    <span id="bTotalCharges" class="font-bold text-red-500">₹0.00</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Breakdown of Taxes -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden h-fit">
+                        <div class="px-5 py-3 border-b border-gray-100 bg-gray-50">
+                            <h3 class="font-semibold text-gray-800">Tax Breakdown (If Profitable)</h3>
+                        </div>
+                        <div class="p-5">
+                            <ul class="space-y-3 text-sm text-gray-600">
+                                <li class="flex justify-between border-b border-dashed border-gray-200 pb-2">
+                                    <span>Taxable Amount</span>
+                                    <span id="tTaxable" class="font-medium text-gray-900">₹0.00</span>
+                                </li>
+                                <li class="flex justify-between border-b border-dashed border-gray-200 pb-2">
+                                    <span id="tBaseLabel">Base Tax</span>
+                                    <span id="tBase" class="font-medium text-gray-900">₹0.00</span>
+                                </li>
+                                <li class="flex justify-between border-b border-dashed border-gray-200 pb-2">
+                                    <span>Health & Education Cess (4%)</span>
+                                    <span id="tCess" class="font-medium text-gray-900">₹0.00</span>
+                                </li>
+                                <li class="flex justify-between pt-2">
+                                    <span class="font-semibold text-gray-800">Total Tax</span>
+                                    <span id="tTotalTax" class="font-bold text-red-500">₹0.00</span>
+                                </li>
+                            </ul>
+                            <div class="mt-4 p-3 bg-blue-50 rounded-lg text-xs text-blue-800" id="taxNote">
+                                Select trade parameters to see tax implications.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const inputs = ['tradeType', 'qty', 'buy', 'sell', 'slab', 'exemption'].map(id => document.getElementById(id));
+        
+        // Listeners for auto-calc and dynamic UI
+        inputs.forEach(el => {
+            if(el) {
+                el.addEventListener('input', calculate);
+                el.addEventListener('change', calculate);
+            }
+        });
+        
+        document.getElementById('tradeType').addEventListener('change', function() {
+            const type = this.value;
+            const slabContainer = document.getElementById('slab-container');
+            const exemptionContainer = document.getElementById('exemption-container');
+            
+            if (type === 'intraday') {
+                slabContainer.classList.remove('hidden');
+                exemptionContainer.classList.add('hidden');
+            } else if (type === 'delivery-st') {
+                slabContainer.classList.add('hidden');
+                exemptionContainer.classList.add('hidden');
+            } else if (type === 'delivery-lt') {
+                slabContainer.classList.add('hidden');
+                exemptionContainer.classList.remove('hidden');
+            }
+            calculate();
+        });
+
+        // Main Calculation Function
+        function calculate() {
+            const type = document.getElementById('tradeType').value;
+            const qty = parseFloat(document.getElementById('qty').value) || 0;
+            const buyPrice = parseFloat(document.getElementById('buy').value) || 0;
+            const sellPrice = parseFloat(document.getElementById('sell').value) || 0;
+            const slab = parseFloat(document.getElementById('slab').value) || 0;
+            const applyExemption = document.getElementById('exemption').checked;
+
+            // Reset UI if missing essential data
+            if (qty <= 0 || buyPrice < 0 || sellPrice < 0) {
+                resetUI();
+                return;
+            }
+
+            const buyValue = buyPrice * qty;
+            const sellValue = sellPrice * qty;
+            const grossPnl = sellValue - buyValue;
+
+            const isIntraday = type === 'intraday';
+            const isDelivery = type.startsWith('delivery');
+
+            // --- CHARGES CALCULATION ---
+            const brokerBuy = Math.min(20, buyValue * 0.001);
+            const brokerSell = Math.min(20, sellValue * 0.001);
+            const brokerage = brokerBuy + brokerSell;
+
+            const stt = isIntraday ? (sellValue * 0.00025) : ((buyValue + sellValue) * 0.001);
+            const exchange = (buyValue + sellValue) * 0.0000307;
+            const stampDuty = isIntraday ? (buyValue * 0.00003) : (buyValue * 0.00015);
+            const sebi = (buyValue + sellValue) * 0.000001;
+            const dpCharge = (isDelivery && sellValue > 0) ? 20 : 0;
+            
+            const gstBase = brokerage + exchange + sebi + dpCharge;
+            const gst = gstBase * 0.18;
+
+            const totalCharges = brokerage + stt + exchange + stampDuty + sebi + dpCharge + gst;
+            const netPreTaxPnl = grossPnl - totalCharges;
+
+            // --- TAX CALCULATION ---
+            let taxableProfit = 0;
+            let baseTax = 0;
+            let taxNoteText = "";
+
+            if (isIntraday) {
+                taxableProfit = netPreTaxPnl; // All charges deductible
+                document.getElementById('tBaseLabel').innerText = `Base Tax (${slab}%)`;
+                
+                if (taxableProfit > 0) {
+                    baseTax = taxableProfit * (slab / 100);
+                    taxNoteText = "Intraday profits are taxed as speculative business income based on your standard tax slab. All charges are deductible.";
+                } else {
+                    taxNoteText = "No tax is applicable as the net intraday trade resulted in a loss.";
+                }
+
+            } else {
+                // For delivery, STT is non-deductible from capital gains
+                taxableProfit = grossPnl - (totalCharges - stt);
+                
+                if (type === 'delivery-st') {
+                    document.getElementById('tBaseLabel').innerText = "Base Tax (20% STCG)";
+                    if (taxableProfit > 0) {
+                        baseTax = taxableProfit * 0.20;
+                        taxNoteText = "Short-Term Capital Gains (STCG) are taxed at a flat 20%. STT charges are not deductible from taxable profit.";
+                    } else {
+                        taxNoteText = "No tax applicable as the short-term delivery trade resulted in a loss.";
+                    }
+                } else if (type === 'delivery-lt') {
+                    document.getElementById('tBaseLabel').innerText = "Base Tax (12.5% LTCG)";
+                    if (taxableProfit > 0) {
+                        if (applyExemption) {
+                            const taxableAfterExemption = Math.max(0, taxableProfit - 125000);
+                            baseTax = taxableAfterExemption * 0.125;
+                            taxNoteText = taxableProfit <= 125000 
+                                ? "Profit is fully covered under the ₹1.25 Lakhs LTCG exemption." 
+                                : `LTCG tax of 12.5% applied on profit exceeding the ₹1.25L exemption (Amount over limit: ₹${taxableAfterExemption.toFixed(2)}).`;
+                        } else {
+                            baseTax = taxableProfit * 0.125;
+                            taxNoteText = "LTCG tax of 12.5% applied. Exemption disabled.";
+                        }
+                    } else {
+                        taxNoteText = "No tax applicable as the long-term delivery trade resulted in a loss.";
+                    }
+                }
+            }
+
+            // Ensure negative taxable profit is capped at 0 for UI presentation of taxes
+            if(taxableProfit < 0) taxableProfit = 0;
+
+            const cess = baseTax > 0 ? baseTax * 0.04 : 0;
+            const totalTax = baseTax + cess;
+            
+            const finalNetPnl = netPreTaxPnl - totalTax;
+
+            // --- UI UPDATE ---
+            
+            // Formatters
+            const fmt = (num) => `₹${Math.max(0, num).toFixed(2)}`; // For charges (always +ve)
+            const fmtPnl = (num) => {
+                const sign = num < 0 ? "-" : "";
+                return `${sign}₹${Math.abs(num).toFixed(2)}`;
+            };
+            const applyColor = (elId, num) => {
+                const el = document.getElementById(elId);
+                el.innerText = fmtPnl(num);
+                el.className = num > 0 ? "text-xl font-bold text-green-600" : (num < 0 ? "text-xl font-bold text-red-600" : "text-xl font-bold text-gray-900");
+            };
+
+            // Summary Cards
+            applyColor('resGross', grossPnl);
+            document.getElementById('resCharges').innerText = fmt(totalCharges);
+            applyColor('resNetPreTax', netPreTaxPnl);
+            document.getElementById('resTax').innerText = fmt(totalTax);
+            
+            // Final Net gets special attention
+            const finalEl = document.getElementById('resFinal');
+            finalEl.innerText = fmtPnl(finalNetPnl);
+            if(finalNetPnl > 0) {
+                finalEl.className = "text-2xl font-black text-green-600";
+                finalEl.parentElement.className = "bg-white p-4 rounded-xl shadow-sm border border-gray-200 border-b-4 border-b-green-500 bg-green-50/20";
+            } else if (finalNetPnl < 0) {
+                finalEl.className = "text-2xl font-black text-red-600";
+                finalEl.parentElement.className = "bg-white p-4 rounded-xl shadow-sm border border-gray-200 border-b-4 border-b-red-500 bg-red-50/20";
+            } else {
+                finalEl.className = "text-2xl font-black text-gray-900";
+                finalEl.parentElement.className = "bg-white p-4 rounded-xl shadow-sm border border-gray-200 border-b-4 border-b-gray-400";
+            }
+
+            // Charges Breakdown
+            document.getElementById('bBrokerage').innerText = fmt(brokerage);
+            document.getElementById('bSTT').innerText = fmt(stt);
+            document.getElementById('bExchange').innerText = fmt(exchange);
+            document.getElementById('bStamp').innerText = fmt(stampDuty);
+            document.getElementById('bSEBI').innerText = fmt(sebi);
+            document.getElementById('bDP').innerText = fmt(dpCharge);
+            document.getElementById('bGST').innerText = fmt(gst);
+            document.getElementById('bTotalCharges').innerText = fmt(totalCharges);
+
+            // Taxes Breakdown
+            document.getElementById('tTaxable').innerText = fmt(taxableProfit);
+            document.getElementById('tBase').innerText = fmt(baseTax);
+            document.getElementById('tCess').innerText = fmt(cess);
+            document.getElementById('tTotalTax').innerText = fmt(totalTax);
+            document.getElementById('taxNote').innerText = taxNoteText;
+        }
+
+        function resetUI() {
+            const zeros = "₹0.00";
+            ['resGross', 'resCharges', 'resNetPreTax', 'resTax', 'resFinal', 
+             'bBrokerage', 'bSTT', 'bExchange', 'bStamp', 'bSEBI', 'bDP', 'bGST', 'bTotalCharges',
+             'tTaxable', 'tBase', 'tCess', 'tTotalTax'].forEach(id => {
+                document.getElementById(id).innerText = zeros;
+            });
+            document.getElementById('resFinal').className = "text-2xl font-black text-gray-900";
+            document.getElementById('resGross').className = "text-xl font-bold text-gray-900";
+            document.getElementById('resNetPreTax').className = "text-xl font-bold text-gray-900";
+            document.getElementById('taxNote').innerText = "Select trade parameters to see tax implications.";
+        }
+
+        // Initialize state on load
+        calculate();
+    </script>
+</body>
+</html>
